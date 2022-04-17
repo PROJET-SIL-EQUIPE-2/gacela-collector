@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Dooby Car</title>
+    <link rel="stylesheet" href="static/css/apexcharts.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap');
+    </style>
+    <style>
+        body {
+            margin: 0;
+            padding-bottom: 3rem;
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        div{
+            text-align: center;
+        }
+
+    </style>
+
+</head>
+<body>
+
+
+<h3>Temperature</h3>
+
+<div id="chart_temp"></div>
+
+<h3>Speed</h3>
+<div id="chart_speed"></div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+    let socket = io();
+    Plotly.plot('chart_temp', [{
+        x: [],
+        y: [],
+        type: 'density'
+    }])
+
+    Plotly.plot('chart_speed', [{
+        x: [],
+        y: [],
+        type: 'density'
+    }])
+
+    let cnt1 = 0
+    let cnt2 = 0
+    socket.on("iot_temp", (msg) => {
+        const {timestamp, value} = JSON.parse(msg)
+        Plotly.extendTraces('chart_temp', {x: [[parseInt(timestamp)]], y: [[value]]}, [0])
+        cnt1++;
+        if (cnt1 > 50){
+            Plotly.relayout('chart_temp', {
+                xaxis: {
+                    range: [cnt1-50, cnt1]
+                }
+            })
+        }
+    })
+    socket.on("iot_speed", (msg) => {
+        const {timestamp, value} = JSON.parse(msg)
+        Plotly.extendTraces('chart_speed', {x: [[parseInt(timestamp)]], y: [[value]]}, [0])
+        cnt2++;
+        if (cnt2 > 50){
+            Plotly.relayout('chart_speed', {
+                xaxis: {
+                    range: [cnt2-50, cnt2]
+                }
+            })
+        }
+    })
+</script>
+</body>
+</html>
