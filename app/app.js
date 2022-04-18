@@ -10,6 +10,9 @@ const cors = require("cors");
 const path = require("path");
 const { Client } = require('pg')
 
+const { PrismaClient } = require('@prisma/client')
+const prisma = new PrismaClient()
+
 dotenv.config({
     path: ".env"
 })
@@ -29,55 +32,17 @@ app.get('/', (req, res) => {
 
 const client = mqtt.connect(process.env.MQTT_SERVER)
 
-const pgClient = new Client({
-    user: 'postgres',
-    host: '127.0.0.1',
-    database: 'postgres',
-    password: 'timescale',
-    port: 5432,
-})
-
-
-pgClient.connect()
-
 
 io.on('connection', async (socket) => {
     //Send All data on client connection
     console.log("Hi")
-    const query = {
-        name: "fetch-all",
-        text: "SELECT * FROM cars"
-    }
+
+
+    const cars_statuses = await prisma.VehiculesStatus.findMany()
 
     // Return data on connection ?
-    pgClient.query(query, (err, res) => {
-        if (!err){
-            socket.emit("fetch_cars_data", res.rows)
-        }
-    })
+    socket.emit("fetch_cars_data", cars_statuses)
 
-
-    // client.subscribe('car/data', function (err) {
-    //     if (err) return
-    //     console.log("SUBSCRIBED")
-    //     client.on('message', async function (topic, message) {
-    //         if (topic === "car/data"){
-    //             try {
-    //                 const {matricule, temperature, speed, charge} = JSON.parse(message.toString())
-    //                 // console.log(JSON.parse(message.toString()))
-    //                 const inserted = await pgClient.query('INSERT INTO cars (matricule, temperature, speed, charge) VALUES ($1, $2, $3, $4) RETURNING matricule, temperature, speed, charge', [matricule, temperature, speed, charge])
-    //                 if (!inserted){
-    //                     console.err("Could not insert record")
-    //                 }else{
-    //                     socket.emit("fetch_car_data", inserted.rows)
-    //                 }
-    //             }catch (e) {
-    //                 console.err(e)
-    //             }
-    //
-    //         }
-    //     })
-    // })
 });
 
 client.subscribe('car/data', function (err) {
@@ -85,37 +50,48 @@ client.subscribe('car/data', function (err) {
     console.log("SUBSCRIBED")
     client.on('message', async function (topic, message) {
         if (topic === "car/data"){
-            // try {
-            //     const {matricule, temperature, speed, charge} = JSON.parse(message.toString())
-            //     // console.log(JSON.parse(message.toString()))
-            //     const inserted = await pgClient.query('INSERT INTO cars (matricule, temperature, speed, charge) VALUES ($1, $2, $3, $4) RETURNING matricule, temperature, speed, charge', [matricule, temperature, speed, charge])
-            //     if (!inserted){
-            //         console.err("Could not insert record")
-            //     }else{
-            //         socket.emit("fetch_car_data", inserted.rows)
-            //     }
-            // }catch (e) {
-            //     console.err(e)
-            // }
-
             io.fetchSockets()
                 .then((sockets) => {
-
-                    sockets.forEach((socket) => {
+                    sockets.forEach(async (socket) => {
                         console.log("Sending event")
-                        // try {
-                        //     const {matricule, temperature, speed, charge} = JSON.parse(message.toString())
-                        //     // console.log(JSON.parse(message.toString()))
-                        //     const inserted = await pgClient.query('INSERT INTO cars (matricule, temperature, speed, charge) VALUES ($1, $2, $3, $4) RETURNING matricule, temperature, speed, charge', [matricule, temperature, speed, charge])
-                        //     if (!inserted){
-                        //         console.err("Could not insert record")
-                        //     }else{
-                        //         socket.emit("fetch_car_data", inserted.rows)
-                        //     }
-                        // }catch (e) {
-                        //     console.err(e)
-                        // }
-                        // socket.emit("fetch_car_data", JSON.parse(message.toString()))
+                        try {
+                            const {
+                                matricule,
+                                temperature,
+                                speed,
+                                charge,
+                                lat,long
+                            } = JSON.parse(message.toString())
+                            // console.log(JSON.parse(message.toString()))
+                            // const inserted = await pgClient.query('INSERT INTO cars (matricule, temperature, speed, charge) VALUES ($1, $2, $3, $4) RETURNING matricule, temperature, speed, charge', [matricule, temperature, speed, charge])
+                            const data = await prisma.VehiculesStatus.upsert({
+                                where:{
+                                    matricule: matricule,
+                                },
+                                update: {
+                                    temperature: temperature,
+                                    speed: speed,
+                                    charge: charge,
+                                    lat: lat,
+                                    long: long
+                                },
+                                create: {
+                                    matricule: matricule,
+                                    temperature: temperature,
+                                    speed: speed,
+                                    charge: charge,
+                                    lat: lat,
+                                    long: long
+                                }
+                            })
+                            if (!data){
+                                console.error("Could not insert record")
+                            }else{
+                                socket.emit("fetch_car_data", data)
+                            }
+                        }catch (e) {
+                            console.error(e)
+                        }
                     })
                 })
                 .catch((err) => {
