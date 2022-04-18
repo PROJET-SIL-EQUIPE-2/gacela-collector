@@ -1,0 +1,20 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicules {
+  collection_time   DateTime           @default(now())
+  vehicule_id       Int                @id @default(autoincrement())
+  matricule         String             @unique(map: "unique_matricule")
+  speed             Float
+  temperature       Float
+  charge            Float
+}

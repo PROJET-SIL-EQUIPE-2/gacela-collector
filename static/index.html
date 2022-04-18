@@ -50,31 +50,39 @@
         type: 'density'
     }])
 
-    let cnt1 = 0
-    let cnt2 = 0
-    socket.on("iot_temp", (msg) => {
-        const {timestamp, value} = JSON.parse(msg)
-        Plotly.extendTraces('chart_temp', {x: [[parseInt(timestamp)]], y: [[value]]}, [0])
-        cnt1++;
-        if (cnt1 > 50){
-            Plotly.relayout('chart_temp', {
-                xaxis: {
-                    range: [cnt1-50, cnt1]
-                }
-            })
-        }
+    // let cnt1 = 0
+    // let cnt2 = 0
+    // socket.on("iot_temp", (msg) => {
+    //     const {timestamp, value} = JSON.parse(msg)
+    //     Plotly.extendTraces('chart_temp', {x: [[parseInt(timestamp)]], y: [[value]]}, [0])
+    //     cnt1++;
+    //     if (cnt1 > 50){
+    //         Plotly.relayout('chart_temp', {
+    //             xaxis: {
+    //                 range: [cnt1-50, cnt1]
+    //             }
+    //         })
+    //     }
+    // })
+    // socket.on("iot_speed", (msg) => {
+    //     const {timestamp, value} = JSON.parse(msg)
+    //     Plotly.extendTraces('chart_speed', {x: [[parseInt(timestamp)]], y: [[value]]}, [0])
+    //     cnt2++;
+    //     if (cnt2 > 50){
+    //         Plotly.relayout('chart_speed', {
+    //             xaxis: {
+    //                 range: [cnt2-50, cnt2]
+    //             }
+    //         })
+    //     }
+    // })
+
+    socket.on("fetch_cars_data", (msg) => {
+        console.log(msg)
     })
-    socket.on("iot_speed", (msg) => {
-        const {timestamp, value} = JSON.parse(msg)
-        Plotly.extendTraces('chart_speed', {x: [[parseInt(timestamp)]], y: [[value]]}, [0])
-        cnt2++;
-        if (cnt2 > 50){
-            Plotly.relayout('chart_speed', {
-                xaxis: {
-                    range: [cnt2-50, cnt2]
-                }
-            })
-        }
+
+    socket.on("fetch_car_data", (msg) => {
+        console.log(msg)
     })
 </script>
 </body>
