@@ -2,8 +2,11 @@ const express = require('express');
 const app = express();
 const http = require('http');
 const server = http.createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(server);
+const io = require('socket.io')(server, {
+    cors: {
+        origin: '*',
+    }
+});
 const mqtt = require('mqtt');
 const dotenv = require("dotenv")
 const cors = require("cors");
@@ -35,6 +38,7 @@ const client = mqtt.connect(process.env.MQTT_SERVER)
 
 io.on('connection', async (socket) => {
     //Send All data on client connection
+
     console.log("Hi")
 
 
