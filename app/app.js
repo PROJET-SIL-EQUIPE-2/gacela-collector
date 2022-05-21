@@ -2,8 +2,11 @@ const express = require('express');
 const app = express();
 const http = require('http');
 const server = http.createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(server);
+const io = require("socket.io")(server, {
+    cors: {
+        origin: '*'
+    }
+});
 const mqtt = require('mqtt');
 const dotenv = require("dotenv")
 const cors = require("cors");
@@ -12,6 +15,9 @@ const { Client } = require('pg')
 
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const axios = require("axios")
+
+const carsService = require("./services/vehicules/cars.service")
 
 dotenv.config({
     path: ".env"
@@ -62,7 +68,7 @@ client.subscribe('car/data', function (err) {
                                 charge,
                                 lat,long
                             } = JSON.parse(message.toString())
-                            // console.log(JSON.parse(message.toString()))
+                            console.log(JSON.parse(message.toString()))
                             // const inserted = await pgClient.query('INSERT INTO cars (matricule, temperature, speed, charge) VALUES ($1, $2, $3, $4) RETURNING matricule, temperature, speed, charge', [matricule, temperature, speed, charge])
                             const data = await prisma.VehiculesStatus.upsert({
                                 where:{
@@ -84,6 +90,17 @@ client.subscribe('car/data', function (err) {
                                     long: long
                                 }
                             })
+                            await prisma.VehiculesStatusHistory.create({
+                                data: {
+                                    matricule: matricule,
+                                    temperature: temperature,
+                                    speed: speed,
+                                    charge: charge,
+                                    lat: lat,
+                                    long: long
+                                }
+                            });
+
                             if (!data){
                                 console.error("Could not insert record")
                             }else{
@@ -104,7 +121,33 @@ client.subscribe('car/data', function (err) {
 })
 
 
+// On blocked
+// Send notification to AM when car is blocked
 
+client.subscribe("car/blocked", (err) => {
+    if (err) throw Error(err)
+    client.on("message", async (topic, message) => {
+        if (topic === "car/blocked"){
+            const {
+                matricule,
+                blocked,
+                lat,
+                long
+            } = JSON.parse(message.toString());
+            if (blocked){
+                const agent = carsService.getAMOfCar(matricule)
+                if (agent){
+                    const res = await axios.post(process.env.BACKEND_API_URL + "notifications", {
+                        title: "A car is blocked",
+                        body: `One of your cars is blocked, matricule is ${matricule}, it's position is ${lat}, ${long}`
+                        agent_id: agent.age_id
+                    })
+                    console.log(res.data)
+                }
+            }
+        }
+    })
+})
 server.listen(app.get("port"), () => {
     console.log(`listening on *:${app.get("port")}`);
 });

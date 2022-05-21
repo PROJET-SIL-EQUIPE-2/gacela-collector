@@ -16,6 +16,7 @@ model Admins {
   password     String?  @db.VarChar
   blocked      Boolean  @default(false)
   Token        Token[]
+  Reply        Reply[]
 }
 
 model AgentsMaintenance {
@@ -30,6 +31,7 @@ model AgentsMaintenance {
   Task            Task[]
   Token           Token[]
   Vehicules       Vehicules[]
+  DemandesSupport DemandesSupport[]
 }
 
 model Decideurs {
@@ -44,12 +46,18 @@ model Decideurs {
 }
 
 model DemandesInscription {
-  demande_id                  Int                          @id @default(autoincrement())
-  locataire_id                Int?                         @unique(map: "demande_unique_locataire")
-  date_demande                DateTime?                    @default(now()) @db.Timestamp(6)
-  etat_demande                EtatDemande                  @default(PENDING)
-  Locataires                  Locataires?                  @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  DemandesInscriptionRejected DemandesInscriptionRejected?
+  demande_id   Int                          @id @default(autoincrement())
+  locataire_id Int?                         @unique(map: "demande_unique_locataire")
+  date_demande DateTime?                    @default(now()) @db.Timestamp(6)
+  etat_demande EtatDemande                  @default(PENDING)
+  locataire    Locataires?                  @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rejected     DemandesInscriptionRejected?
+}
+
+enum EtatDemande {
+  PENDING
+  VALIDATED
+  REJECTED
 }
 
 model DemandesInscriptionRejected {
@@ -59,18 +67,49 @@ model DemandesInscriptionRejected {
 }
 
 model DemandesSupport {
-  demande_id   Int         @id @default(autoincrement())
-  locataire_id Int?
-  message      String?     @db.VarChar
-  date_demande DateTime?   @db.Timestamp(6)
-  Locataires   Locataires? @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  demande_id        Int                @id @default(autoincrement())
+  locataire_id      Int?
+  agent_id          Int?
+  vehicule_id       Int?
+  type_support      TypeSupport        @default(Autres)
+  message           String?            @db.VarChar
+  read              Boolean?           @default(false)
+  date_demande      DateTime?          @db.Timestamp(6)
+  Locataires        Locataires?        @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  AgentsMaintenance AgentsMaintenance? @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade, onUpdate: NoAction)
+  Vehicules         Vehicules?         @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: Cascade, onUpdate: NoAction)
+  Reply             Reply[]
+}
+
+enum TypeSupport {
+  Batterie
+  Demarreur
+  Amortisseurs
+  Vitesses
+  Moteur
+  Bruits
+  Freinage
+  Climatisation
+  Autres
+}
+
+model Reply {
+  reply_id        Int              @id @default(autoincrement())
+  demande_id      Int?
+  locataire_id    Int?
+  admin_id        Int?
+  message         String?          @db.VarChar
+  Locataires      Locataires?      @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  DemandesSupport DemandesSupport? @relation(fields: [demande_id], references: [demande_id], onDelete: Cascade, onUpdate: NoAction)
+  Admins          Admins?          @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade, onUpdate: NoAction)
+
 }
 
 model Facture {
   facture_id     Int           @id @default(autoincrement())
+  reservation_id Int?
   price          Int?
   paid           Boolean?
-  reservation_id Int?
   Reservations   Reservations? @relation(fields: [reservation_id], references: [reservation_id], onDelete: NoAction, onUpdate: NoAction)
   Paiment        Paiment[]
 }
@@ -87,10 +126,11 @@ model Locataires {
   validated              Boolean?                 @default(false)
   blocked                Boolean                  @default(false)
   DemandesInscription    DemandesInscription?
+  Reservations           Reservations[]
   DemandesSupport        DemandesSupport[]
   NotificationsLocataire NotificationsLocataire[]
-  Reservations           Reservations[]
   Token                  Token[]
+  Reply                  Reply[]
 }
 
 model NotificationsAM {
@@ -127,9 +167,18 @@ model Panne {
   date_panne  DateTime?             @db.Timestamp(6)
   temperature Float?
   blocked     Boolean?
-  position    Unsupported("point")?
   treated     Boolean?
   Vehicules   Vehicules?            @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Task {
+  task_id           Int                @id @default(autoincrement())
+  agent_id          Int?
+  date              DateTime?          @map("_date") @db.Date
+  panne_id          Int?
+  description       String?            @db.VarChar
+  completed         Boolean?
+  AgentsMaintenance AgentsMaintenance? @relation(fields: [agent_id], references: [agent_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Reservations {
@@ -143,19 +192,71 @@ model Reservations {
   destLat          Float?
   destLong         Float?
   date_reservation DateTime         @default(now())
-  Locataires       Locataires       @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  Vehicules        Vehicules        @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: NoAction, onUpdate: NoAction)
-  Facture          Facture[]
+  locataire       Locataires?      @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vehicule        Vehicules?       @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: NoAction, onUpdate: NoAction)
+  facture          Facture[]
 }
 
-model Task {
-  task_id           Int                @id @default(autoincrement())
-  agent_id          Int?
-  date              DateTime?          @map("_date") @db.Date
-  panne_id          Int?
-  description       String?            @db.VarChar
-  completed         Boolean?
-  AgentsMaintenance AgentsMaintenance? @relation(fields: [agent_id], references: [agent_id], onDelete: NoAction, onUpdate: NoAction)
+enum EtatReservation {
+  INVALIDE
+  ENCOURS
+  COMPLETED
+  REJECTED
+}
+
+model TypePaiment {
+  type_id     Int       @id @default(autoincrement())
+  description String?   @db.VarChar
+  Paiment     Paiment[]
+}
+
+model Vehicules {
+  vehicule_id       Int                @id @default(autoincrement())
+  matricule         String             @unique(map: "unique_matricule")
+  car_photo         String?
+  responsable       Int?
+  type_vehicule     Int?
+  kilometrage       Float              @default(0.0)
+  etat              VehicleState       @default(WORKING)
+  disponible        Boolean            @default(true)
+  locked            Boolean            @default(true)
+  AgentsMaintenance AgentsMaintenance? @relation(fields: [responsable], references: [agent_id], onDelete: NoAction, onUpdate: NoAction)
+  TypeVehicule      VehiculeType?      @relation(fields: [type_vehicule], references: [type_id], onDelete: NoAction, onUpdate: NoAction)
+  Panne             Panne[]
+  Reservations      Reservations[]
+  VehiculesStatus   VehiculesStatus[]
+  VehiculesStatusHistory   VehiculesStatusHistory[]
+  DemandesSupport   DemandesSupport[]
+}
+
+model VehiculeType{
+    type_id         Int             @id @default(autoincrement())
+    type            String?         @unique
+    price_per_hour  Float           @default(0)
+    vehicules       Vehicules[]
+}
+
+model VehiculesStatus{
+    matricule       String              @unique
+    collection_time DateTime            @default(now())
+    temperature     Float?
+    speed           Float?
+    charge          Float?
+    lat             Float?
+    long            Float?
+    Vehicules       Vehicules   @relation(fields: [matricule], references: [matricule], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model VehiculesStatusHistory{
+    matricule       String
+    collection_time DateTime            @default(now())
+    temperature     Float?
+    speed           Float?
+    charge          Float?
+    lat             Float?
+    long            Float?
+    Vehicules       Vehicules   @relation(fields: [matricule], references: [matricule], onDelete: NoAction, onUpdate: NoAction)
+    @@unique([matricule, collection_time])
 }
 
 model Token {
@@ -173,56 +274,13 @@ model Token {
   Locataires        Locataires?        @relation(fields: [id_locataire], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-model TypePaiment {
-  type_id     Int       @id @default(autoincrement())
-  description String?   @db.VarChar
-  Paiment     Paiment[]
-}
-
-model Vehicules {
-  vehicule_id       Int                @id @default(autoincrement())
-  matricule         String             @unique(map: "unique_matricule")
-  car_photo         String?
-  responsable       Int?
-  type_vehicule     String
-  kilometrage       Float              @default(0.0)
-  etat              VehicleState       @default(WORKING)
-  disponible        Boolean            @default(true)
-  price_per_hour    Float              @default(0)
-  locked            Boolean            @default(true)
-  AgentsMaintenance AgentsMaintenance? @relation(fields: [responsable], references: [agent_id], onDelete: NoAction, onUpdate: NoAction)
-  Panne             Panne[]
-  Reservations      Reservations[]
-  VehiculesStatus   VehiculesStatus[]
-}
-
-model VehiculesStatus{
-    matricule       String              @unique
-    collection_time DateTime            @default(now())
-    temperature     Float?
-    speed           Float?
-    charge          Float?
-    lat             Float?
-    long            Float?
-
-    Vehicules       Vehicules   @relation(fields: [matricule], references: [matricule], onDelete: NoAction, onUpdate: NoAction)
-}
-
-
-enum EtatDemande {
-  PENDING
-  VALIDATED
-  REJECTED
-}
-
-enum EtatReservation {
-  INVALIDE
-  ENCOURS
-  COMPLETED
-  REJECTED
-}
-
 enum VehicleState {
   WORKING
   OUTOFORDER
+}
+
+model NotificationsAMToken {
+  id       Int     @id @default(autoincrement())
+  agent_id Int?
+  token    String?
 }
