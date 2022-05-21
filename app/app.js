@@ -139,7 +139,7 @@ client.subscribe("car/blocked", (err) => {
                 if (agent){
                     const res = await axios.post(process.env.BACKEND_API_URL + "notifications", {
                         title: "A car is blocked",
-                        body: `One of your cars is blocked, matricule is ${matricule}, it's position is ${lat}, ${long}`
+                        body: `One of your cars is blocked, matricule is ${matricule}, it's position is ${lat}, ${long}`,
                         agent_id: agent.age_id
                     })
                     console.log(res.data)
