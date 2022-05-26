@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const http = require('http');
 const server = http.createServer(app);
+const { instrument } = require("@socket.io/admin-ui")
 const io = require("socket.io")(server, {
     cors: {
         origin: '*'
@@ -43,12 +44,15 @@ io.on('connection', async (socket) => {
     //Send All data on client connection
     console.log("Hi")
 
+    socket.on("join", (room) => {
+        socket.join(room)
+    })
 
     const cars_statuses = await prisma.VehiculesStatus.findMany()
 
     // Return data on connection ?
-    socket.emit("fetch_cars_data", cars_statuses)
-
+    // socket.emit("fetch_cars_data", cars_statuses)
+    io.to("web").emit("fetch_cars_data", cars_statuses)
 });
 
 client.subscribe('car/data', function (err) {
@@ -56,69 +60,82 @@ client.subscribe('car/data', function (err) {
     console.log("SUBSCRIBED")
     client.on('message', async function (topic, message) {
         if (topic === "car/data"){
-            io.fetchSockets()
-                .then((sockets) => {
-                    sockets.forEach(async (socket) => {
-                        console.log("Sending event")
-                        try {
-                            const {
-                                matricule,
-                                temperature,
-                                speed,
-                                charge,
-                                lat,long
-                            } = JSON.parse(message.toString())
-                            console.log(JSON.parse(message.toString()))
-                            // const inserted = await pgClient.query('INSERT INTO cars (matricule, temperature, speed, charge) VALUES ($1, $2, $3, $4) RETURNING matricule, temperature, speed, charge', [matricule, temperature, speed, charge])
-                            const data = await prisma.VehiculesStatus.upsert({
-                                where:{
-                                    matricule: matricule,
-                                },
-                                update: {
-                                    temperature: temperature,
-                                    speed: speed,
-                                    charge: charge,
-                                    lat: lat,
-                                    long: long
-                                },
-                                create: {
-                                    matricule: matricule,
-                                    temperature: temperature,
-                                    speed: speed,
-                                    charge: charge,
-                                    lat: lat,
-                                    long: long
-                                }
-                            })
-                            await prisma.VehiculesStatusHistory.create({
-                                data: {
-                                    matricule: matricule,
-                                    temperature: temperature,
-                                    speed: speed,
-                                    charge: charge,
-                                    lat: lat,
-                                    long: long
-                                }
-                            });
-
-                            if (!data){
-                                console.error("Could not insert record")
-                            }else{
-                                socket.emit("fetch_car_data", data)
-                            }
-                        }catch (e) {
-                            console.error(e)
-                        }
+            try {
+                const {
+                    matricule,
+                    temperature,
+                    speed,
+                    charge,
+                    lat,long
+                } = JSON.parse(message.toString())
+                console.log(JSON.parse(message.toString()))
+                let agent = await carsService.getAMOfCar(matricule)
+                /*
+                * Send car data to agent's socket identified by
+                * socket id
+                * */
+                console.log(agent)
+                if (agent){
+                    io.to(`agent_${agent.agent_id}`).emit("fetch_car_data", {
+                        matricule,
+                        temperature,
+                        speed,
+                        charge,
+                        lat, long
                     })
-                })
-                .catch((err) => {
-                        console.error(err)
+                }
+
+                // const inserted = await pgClient.query('INSERT INTO cars (matricule, temperature, speed, charge) VALUES ($1, $2, $3, $4) RETURNING matricule, temperature, speed, charge', [matricule, temperature, speed, charge])
+                const data = await prisma.VehiculesStatus.upsert({
+                    where:{
+                        matricule: matricule,
+                    },
+                    update: {
+                        temperature: temperature,
+                        speed: speed,
+                        charge: charge,
+                        lat: lat,
+                        long: long
+                    },
+                    create: {
+                        matricule: matricule,
+                        temperature: temperature,
+                        speed: speed,
+                        charge: charge,
+                        lat: lat,
+                        long: long
                     }
-                )
+                })
+                await prisma.VehiculesStatusHistory.create({
+                    data: {
+                        matricule: matricule,
+                        temperature: temperature,
+                        speed: speed,
+                        charge: charge,
+                        lat: lat,
+                        long: long
+                    }
+                });
+
+                if (!data){
+                    console.error("Could not insert record")
+                }else{
+                    /*
+                    * Sending Emit event after db update is kinda mandatory here
+                    * since web client need car id also
+                    * */
+                    io.to("web").emit("fetch_car_data", data)
+                }
+            }catch (e) {
+                console.error(e)
+            }
+
 
         }
     })
 })
+
+
 
 
 // On blocked
@@ -148,6 +165,12 @@ client.subscribe("car/blocked", (err) => {
         }
     })
 })
+
+
+instrument(io, {
+    auth: false
+})
+
 server.listen(app.get("port"), () => {
     console.log(`listening on *:${app.get("port")}`);
 });

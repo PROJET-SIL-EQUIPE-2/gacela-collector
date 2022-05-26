@@ -11,11 +11,11 @@ const getAMOfCar = async (matricule) => {
         })
         return await prisma.AgentsMaintenance.findUnique({
             where: {
-                agent_id: car.responsible
+                agent_id: car.responsable
             }
         });
     }catch (e){
-
+        return null
     }
 }
 
