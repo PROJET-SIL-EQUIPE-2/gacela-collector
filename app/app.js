@@ -45,6 +45,7 @@ io.on('connection', async (socket) => {
     console.log("Hi")
 
     socket.on("join", (room) => {
+        console.log(`Socket wants to join room ${room}`)
         socket.join(room)
     })
 
@@ -81,6 +82,18 @@ client.subscribe('car/data', function (err) {
                         temperature,
                         speed,
                         charge,
+                        lat, long
+                    })
+                }
+
+                // Check if car is part of a valid reservation
+                let carReservation = await carsService.getRunningReservation(matricule);
+                if (carReservation){
+                    // Emit event to locataire
+                    console.log(`Sending to locataire_${carReservation.locataireId}#car_${carReservation.carId}`)
+                    io.to(`locataire_${carReservation.locataireId}#car_${carReservation.carId}`).emit("fetch_car_data", {
+                        matricule,
+
                         lat, long
                     })
                 }
@@ -129,8 +142,6 @@ client.subscribe('car/data', function (err) {
             }catch (e) {
                 console.error(e)
             }
-
-
         }
     })
 })
@@ -144,23 +155,36 @@ client.subscribe('car/data', function (err) {
 client.subscribe("car/blocked", (err) => {
     if (err) throw Error(err)
     client.on("message", async (topic, message) => {
-        if (topic === "car/blocked"){
+        // TODO: Replace with panne
+        // ODB sends panne details
+        if (topic === "car/panne"){
             const {
                 matricule,
-                blocked,
+                panne_type,
                 lat,
                 long
             } = JSON.parse(message.toString());
-            if (blocked){
-                const agent = carsService.getAMOfCar(matricule)
-                if (agent){
-                    const res = await axios.post(process.env.BACKEND_API_URL + "notifications", {
-                        title: "A car is blocked",
-                        body: `One of your cars is blocked, matricule is ${matricule}, it's position is ${lat}, ${long}`,
-                        agent_id: agent.age_id
-                    })
-                    console.log(res.data)
-                }
+            const agent = carsService.getAMOfCar(matricule)
+            switch (panne_type) {
+                case "blocked":
+                    // TODO Creat task by posting to main backend
+                    if (agent){
+                        const res = await axios.post(process.env.BACKEND_API_URL + "notifications", {
+                            title: "A car is blocked",
+                            body: `One of your cars is blocked, matricule is ${matricule}, it's position is ${lat}, ${long}`,
+                            agent_id: agent.agent_id
+                        })
+                        // TODO: Create task
+
+                        console.log(res.data)
+                    }
+                    break
+                case "test1":
+                    break
+                case "test2":
+                    break
+                default:
+                    break
             }
         }
     })

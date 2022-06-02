@@ -19,6 +19,35 @@ const getAMOfCar = async (matricule) => {
     }
 }
 
+const getRunningReservation = async (matricule) => {
+    try {
+        let car = await prisma.Vehicules.findFirst({
+            where: {
+                matricule: matricule
+            }
+        })
+
+
+        let reservation = await prisma.Reservations.findFirst({
+            where: {
+                vehicule_id: car.vehicule_id
+            }
+        })
+        let locataire = await prisma.Locataires.findUnique({
+            where: {
+                id: reservation.locataire_id
+            }
+        })
+        return  {
+            locataireId: locataire.id,
+            carId: car.vehicule_id
+        }
+    }catch (e) {
+        console.error(e)
+    }
+}
+
 module.exports = {
-    getAMOfCar
+    getAMOfCar,
+    getRunningReservation
 }
