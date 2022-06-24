@@ -93,7 +93,6 @@ client.subscribe('car/data', function (err) {
                     console.log(`Sending to locataire_${carReservation.locataireId}#car_${carReservation.carId}`)
                     io.to(`locataire_${carReservation.locataireId}#car_${carReservation.carId}`).emit("fetch_car_data", {
                         matricule,
-
                         lat, long
                     })
                 }
