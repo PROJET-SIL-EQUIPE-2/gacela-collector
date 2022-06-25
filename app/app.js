@@ -168,13 +168,19 @@ client.subscribe("car/panne", (err) => {
                 case "blocked":
                     // TODO Creat task by posting to main backend
                     if (agent){
-                        const res = await axios.post(process.env.BACKEND_API_URL + "notifications", {
+
+                        // create  notification
+                        let res = await axios.post(process.env.BACKEND_API_URL + "notifications", {
                             title: "A car is blocked",
                             body: `One of your cars is blocked, matricule is ${matricule}, it's position is ${lat}, ${long}`,
                             agent_id: agent.agent_id
                         })
                         // TODO: Create task
-
+                        res = await axios.post(process.env.BACKEND_API_URL + "tasks/create", {
+                            important: true,
+                            description: `Unlock car of matricule ${matricule}, it's position is ${lat}, ${long}`,
+                            agent_id: agent.agent_id
+                        })
                         console.log(res.data)
                     }
                     break
