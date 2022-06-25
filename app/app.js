@@ -151,7 +151,7 @@ client.subscribe('car/data', function (err) {
 // On blocked
 // Send notification to AM when car is blocked
 
-client.subscribe("car/blocked", (err) => {
+client.subscribe("car/panne", (err) => {
     if (err) throw Error(err)
     client.on("message", async (topic, message) => {
         // TODO: Replace with panne
@@ -189,6 +189,20 @@ client.subscribe("car/blocked", (err) => {
     })
 })
 
+
+
+// Finish trajet
+client.subscribe("trajet/finish", (err) => {
+    if(err) throw Error(err)
+    client.on("message", async (topic, message) => {
+        if (topic === "trajet/finish"){
+            const {matricule} = JSON.parse(message.toString())
+            let carReservation = await carsService.getRunningReservation(matricule)
+            console.log(carReservation)
+            io.to(`locataire_${carReservation.locataireId}#car_${carReservation.carId}`).emit("finish", "Good luck x)")
+        }
+    })
+})
 
 instrument(io, {
     auth: false

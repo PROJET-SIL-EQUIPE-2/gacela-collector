@@ -15,6 +15,7 @@ model Admins {
   isSuperAdmin Boolean?
   password     String?  @db.VarChar
   blocked      Boolean  @default(false)
+  salary       Float    @default(30000)
   Token        Token[]
   Reply        Reply[]
 }
@@ -27,6 +28,7 @@ model AgentsMaintenance {
   family_name     String?           @db.VarChar
   name            String?           @db.VarChar
   blocked         Boolean           @default(false)
+  salary          Float             @default(20000)
   NotificationsAM NotificationsAM[]
   Task            Task[]
   Token           Token[]
@@ -42,6 +44,8 @@ model Decideurs {
   email        String? @unique @db.VarChar
   password     String? @db.VarChar
   blocked      Boolean @default(false)
+  salary       Float   @default(40000)
+
   Token        Token[]
 }
 
@@ -74,7 +78,7 @@ model DemandesSupport {
   type_support      TypeSupport        @default(Autres)
   message           String?            @db.VarChar
   read              Boolean?           @default(false)
-  date_demande      DateTime?          @db.Timestamp(6)
+  date_demande      DateTime?          @default(now()) @db.Timestamp(6)
   Locataires        Locataires?        @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   AgentsMaintenance AgentsMaintenance? @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade, onUpdate: NoAction)
   Vehicules         Vehicules?         @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: Cascade, onUpdate: NoAction)
@@ -105,13 +109,12 @@ model Reply {
 
 }
 
-model Facture {
-  facture_id     Int           @id @default(autoincrement())
-  reservation_id Int?
-  price          Int?
-  paid           Boolean?
-  Reservations   Reservations? @relation(fields: [reservation_id], references: [reservation_id], onDelete: NoAction, onUpdate: NoAction)
-  Paiment        Paiment[]
+model Refund {
+  refund_id  Int      @id @default(autoincrement())
+  paiment_id Int?
+  paiment    Paiment? @relation(fields: [paiment_id], references: [paiment_id], onDelete: NoAction, onUpdate: NoAction)
+  amount     Int?
+
 }
 
 model Locataires {
@@ -152,49 +155,56 @@ model NotificationsLocataire {
 }
 
 model Paiment {
-  paiment_id   Int          @id @default(autoincrement())
-  facture_id   Int?
-  date_paiment DateTime?    @db.Timestamp(6)
-  type_paiment Int?
-  Facture      Facture?     @relation(fields: [facture_id], references: [facture_id], onDelete: NoAction, onUpdate: NoAction)
-  TypePaiment  TypePaiment? @relation(fields: [type_paiment], references: [type_id], onDelete: NoAction, onUpdate: NoAction)
+  paiment_id      Int           @id @default(autoincrement())
+  reservation_id  Int?
+  estimated_price Float?
+  real_price      Float?        @default(0)
+  date_paiment    DateTime?     @default(now()) @db.Timestamp(6)
+  type_paiment    Int?
+  refunds         Refund[]
+  TypePaiment     TypePaiment?  @relation(fields: [type_paiment], references: [type_id], onDelete: NoAction, onUpdate: NoAction)
+  Reservations    Reservations? @relation(fields: [reservation_id], references: [reservation_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Panne {
-  panne_id    Int                   @id @default(autoincrement())
+  panne_id    Int        @id @default(autoincrement())
   vehicule_id Int?
   charge      Float?
-  date_panne  DateTime?             @db.Timestamp(6)
+  date_panne  DateTime?  @db.Timestamp(6)
   temperature Float?
   blocked     Boolean?
   treated     Boolean?
-  Vehicules   Vehicules?            @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: NoAction, onUpdate: NoAction)
+  Vehicules   Vehicules? @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Task {
   task_id           Int                @id @default(autoincrement())
   agent_id          Int?
-  date              DateTime?          @map("_date") @db.Date
-  panne_id          Int?
+  date              DateTime?          @default(now()) @map("_date") @db.Date
   description       String?            @db.VarChar
-  completed         Boolean?
+  completed         Boolean?           @default(false)
+  progress          Int?               @default(0)
+  important         Boolean            @default(false)
   AgentsMaintenance AgentsMaintenance? @relation(fields: [agent_id], references: [agent_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model Reservations {
-  reservation_id   Int              @id @default(autoincrement())
-  locataire_id     Int
-  vehicule_id      Int
-  code             String?
-  etat             EtatReservation? @default(INVALIDE)
-  departLat        Float?
-  departLong       Float?
-  destLat          Float?
-  destLong         Float?
-  date_reservation DateTime         @default(now())
-  locataire       Locataires?      @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  vehicule        Vehicules?       @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: NoAction, onUpdate: NoAction)
-  facture          Facture[]
+  reservation_id     Int                 @id @default(autoincrement())
+  locataire_id       Int
+  vehicule_id        Int
+  code               String?
+  etat               EtatReservation?    @default(INVALIDE)
+  departLat          Float?
+  departLong         Float?
+  destLat            Float?
+  destLong           Float?
+  date_reservation   DateTime            @default(now())
+  real_start_course  DateTime?
+  real_end_course    DateTime?
+  locataire          Locataires?         @relation(fields: [locataire_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vehicule           Vehicules?          @relation(fields: [vehicule_id], references: [vehicule_id], onDelete: NoAction, onUpdate: NoAction)
+  Paiment            Paiment[]
+  reservation_region ReservationRegion[]
 }
 
 enum EtatReservation {
@@ -211,52 +221,71 @@ model TypePaiment {
 }
 
 model Vehicules {
-  vehicule_id       Int                @id @default(autoincrement())
-  matricule         String             @unique(map: "unique_matricule")
-  car_photo         String?
-  responsable       Int?
-  type_vehicule     Int?
-  kilometrage       Float              @default(0.0)
-  etat              VehicleState       @default(WORKING)
-  disponible        Boolean            @default(true)
-  locked            Boolean            @default(true)
-  AgentsMaintenance AgentsMaintenance? @relation(fields: [responsable], references: [agent_id], onDelete: NoAction, onUpdate: NoAction)
-  TypeVehicule      VehiculeType?      @relation(fields: [type_vehicule], references: [type_id], onDelete: NoAction, onUpdate: NoAction)
-  Panne             Panne[]
-  Reservations      Reservations[]
-  VehiculesStatus   VehiculesStatus[]
-  VehiculesStatusHistory   VehiculesStatusHistory[]
-  DemandesSupport   DemandesSupport[]
+  vehicule_id            Int                      @id @default(autoincrement())
+  matricule              String                   @unique(map: "unique_matricule")
+  car_photo              String?
+  responsable            Int?
+  type_vehicule          Int?
+  kilometrage            Float                    @default(0.0)
+  etat                   VehicleState             @default(WORKING)
+  disponible             Boolean                  @default(true)
+  locked                 Boolean                  @default(true)
+  region                 Int?
+  cost                  Float?                   @default(0)
+  AgentsMaintenance      AgentsMaintenance?       @relation(fields: [responsable], references: [agent_id], onDelete: NoAction, onUpdate: NoAction)
+  Region                 Region?                  @relation(fields: [region], references: [region_id], onDelete: NoAction, onUpdate: NoAction)
+  type_car               VehiculeType?            @relation(fields: [type_vehicule], references: [type_id], onDelete: NoAction, onUpdate: NoAction)
+  Panne                  Panne[]
+  Reservations           Reservations[]
+  VehiculesStatus        VehiculesStatus[]
+  VehiculesStatusHistory VehiculesStatusHistory[]
+  DemandesSupport        DemandesSupport[]
 }
 
-model VehiculeType{
-    type_id         Int             @id @default(autoincrement())
-    type            String?         @unique
-    price_per_hour  Float           @default(0)
-    vehicules       Vehicules[]
+model VehiculeType {
+  type_id        Int         @id @default(autoincrement())
+  type           String?     @unique
+  price_per_hour Float       @default(0)
+  vehicules      Vehicules[]
 }
 
-model VehiculesStatus{
-    matricule       String              @unique
-    collection_time DateTime            @default(now())
-    temperature     Float?
-    speed           Float?
-    charge          Float?
-    lat             Float?
-    long            Float?
-    Vehicules       Vehicules   @relation(fields: [matricule], references: [matricule], onDelete: NoAction, onUpdate: NoAction)
+model Region {
+  region_id         Int                 @id @default(autoincrement())
+  region_name       String              @unique
+  vehicules         Vehicules[]
+  ReservationRegion ReservationRegion[]
 }
 
-model VehiculesStatusHistory{
-    matricule       String
-    collection_time DateTime            @default(now())
-    temperature     Float?
-    speed           Float?
-    charge          Float?
-    lat             Float?
-    long            Float?
-    Vehicules       Vehicules   @relation(fields: [matricule], references: [matricule], onDelete: NoAction, onUpdate: NoAction)
-    @@unique([matricule, collection_time])
+model ReservationRegion {
+  id             Int          @id @default(autoincrement())
+  region_id      Int
+  reservation_id Int
+  Region         Region       @relation(fields: [region_id], references: [region_id], onDelete: NoAction, onUpdate: NoAction)
+  Reservation    Reservations @relation(fields: [reservation_id], references: [reservation_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model VehiculesStatus {
+  matricule       String    @unique
+  collection_time DateTime  @default(now())
+  temperature     Float?
+  speed           Float?
+  charge          Float?
+  lat             Float?
+  long            Float?
+  Vehicules       Vehicules @relation(fields: [matricule], references: [matricule], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model VehiculesStatusHistory {
+  matricule       String
+  collection_time DateTime  @default(now())
+  temperature     Float?
+  speed           Float?
+  charge          Float?
+  lat             Float?
+  long            Float?
+  Vehicules       Vehicules @relation(fields: [matricule], references: [matricule], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([matricule, collection_time])
 }
 
 model Token {
