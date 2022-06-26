@@ -203,9 +203,17 @@ client.subscribe("trajet/finish", (err) => {
     client.on("message", async (topic, message) => {
         if (topic === "trajet/finish"){
             const {matricule} = JSON.parse(message.toString())
-            let carReservation = await carsService.getRunningReservation(matricule)
-            console.log(carReservation)
-            io.to(`locataire_${carReservation.locataireId}#car_${carReservation.carId}`).emit("finish", "Good luck x)")
+            try {
+                let carReservation = await carsService.getRunningReservation(matricule)
+                console.log(carReservation)
+                io.to(`locataire_${carReservation.locataireId}#car_${carReservation.carId}`).emit("finish", "Good luck x)")
+
+            }catch (e) {
+                io.to("error-room").emit(e.message)
+                console.log(e.message)
+            }
+
+
         }
     })
 })
