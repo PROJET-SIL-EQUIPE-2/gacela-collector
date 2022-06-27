@@ -12,7 +12,7 @@ const dotenv = require("dotenv")
 const cors = require("cors");
 const path = require("path");
 const { Client } = require('pg')
-
+const {instrument} = require("@socket.io/admin-ui")
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 const axios = require("axios")
@@ -25,7 +25,7 @@ dotenv.config({
 
 
 
-app.set("port", process.env.PORT || 3000) ;
+app.set("port", process.env.PORT || 3001) ;
 
 
 app.use(cors())
