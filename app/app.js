@@ -2,10 +2,9 @@ const express = require('express');
 const app = express();
 const http = require('http');
 const server = http.createServer(app);
-const { instrument } = require("@socket.io/admin-ui")
-const io = require("socket.io")(server, {
+const io = require('socket.io')(server, {
     cors: {
-        origin: '*'
+        origin: '*',
     }
 });
 const mqtt = require('mqtt');
@@ -42,6 +41,7 @@ const client = mqtt.connect(process.env.MQTT_SERVER)
 
 io.on('connection', async (socket) => {
     //Send All data on client connection
+
     console.log("Hi")
 
     socket.on("join", (room) => {
