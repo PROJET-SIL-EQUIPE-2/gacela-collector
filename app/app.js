@@ -57,7 +57,7 @@ io.on('connection', async (socket) => {
 });
 
 client.subscribe('car/data', function (err) {
-    if (err) return
+    if (err) return null
     console.log("SUBSCRIBED")
     client.on('message', async function (topic, message) {
         if (topic === "car/data"){
@@ -152,7 +152,7 @@ client.subscribe('car/data', function (err) {
 // Send notification to AM when car is blocked
 
 client.subscribe("car/panne", (err) => {
-    if (err) throw Error(err)
+    if (err) return null
     client.on("message", async (topic, message) => {
         // TODO: Replace with panne
         // ODB sends panne details
@@ -199,7 +199,7 @@ client.subscribe("car/panne", (err) => {
 
 // Finish trajet
 client.subscribe("trajet/finish", (err) => {
-    if(err) throw Error(err)
+    if(err) return null
     client.on("message", async (topic, message) => {
         if (topic === "trajet/finish"){
             const {matricule} = JSON.parse(message.toString())
