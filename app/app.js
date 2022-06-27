@@ -53,7 +53,7 @@ io.on('connection', async (socket) => {
 
     // Return data on connection ?
     // socket.emit("fetch_cars_data", cars_statuses)
-    io.to("web").emit("fetch_cars_data", cars_statuses)
+    io.emit("fetch_cars_data", cars_statuses)
 });
 
 client.subscribe('car/data', function (err) {
